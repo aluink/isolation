@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ConsoleApplication3 {
 
@@ -12,43 +9,37 @@ namespace ConsoleApplication3 {
 			switch (source) {
 				case Board.Piece.Black: return "B";
 				case Board.Piece.Empty: return " ";
-				case Board.Piece.Block: return " X ";
+				case Board.Piece.Block: return "X";
 				default: return "W";
 			}
 		}
 	}
 
-	abstract class Move {
+	 class Move {
 		public int destination;
 
-    public abstract string PrintMove();
-    public abstract bool Compare(Move m);
-	}
-
-	class PlaceMove : Move {
-		public PlaceMove(int destination) {
+		public Move(int destination) {
 			this.destination = destination;
 		}
 
-    public override string PrintMove() {
-      return $"{(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+    public virtual string PrintMove() {
+      return $"{(char)(destination%7+'a')}{(char)(destination/7+'1')}";
     }
 
-    public override bool Compare(Move m) {
-      return m.GetType() == typeof(PlaceMove) && this.destination == m.destination;
+    public virtual bool Compare(Move m) {
+      return m.GetType() == typeof(Move) && this.destination == m.destination;
     }
 	}
 
 	class MoveMove : Move {
 		public int initial;
 
-		public MoveMove(int initial, int destination) {
-			this.destination = destination;
+		public MoveMove(int initial, int destination) : base(destination) {
 			this.initial = initial;
 		}
 
     public override string PrintMove() {
-      return $"{(char)(initial%7+'A')}{(char)(initial/7+'1')}{(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+      return $"{(char)(initial%7+'a')}{(char)(initial/7+'1')}{(char)(destination%7+'a')}{(char)(destination/7+'1')}";
     }
 
     public override bool Compare(Move m) {
@@ -61,12 +52,14 @@ namespace ConsoleApplication3 {
 	class Board {
 		public enum Piece { Black = -1, Empty, White, Block }
 
+    Stack<Move> mMoves;
 		readonly Piece [] pos;
 		Piece mTurn = Piece.White;
 		int mMoveCount = 0;
 		
 		public Board() {
 			pos = new Piece[49];
+      mMoves = new Stack<Move>();
 			for(int i = 0;i < 49;i++) {
 				pos[i] = Board.Piece.Empty;
  			}
@@ -76,30 +69,22 @@ namespace ConsoleApplication3 {
 			mTurn = (Piece)((int)mTurn * -1);
 		}
 
-		public void MakeMove(PlaceMove m) {
+		public void MakeMove(Move m) {
 			mMoveCount++;
 			pos[m.destination] = mTurn;
+      if(m.GetType() == typeof(MoveMove))
+        pos[((MoveMove)m).initial] = Piece.Block;
       SwitchTurn();
+      mMoves.Push(m);
 		}
 
-		public void MakeMove(MoveMove m) {
-			mMoveCount++;
-			pos[m.destination] = pos[m.initial];
-			pos[m.initial] = Piece.Block;
-      SwitchTurn();
-		}
-
-		public void unMakeMove(PlaceMove m) {
+		public void unMakeMove() {
+      var m = mMoves.Pop();
 			mMoveCount--;
 			pos[m.destination] = Piece.Empty;
       SwitchTurn();
-		}
-
-		public void unMakeMove(MoveMove m) {
-			mMoveCount--;
-			pos[m.initial] = pos[m.destination];
-			pos[m.destination] = Piece.Empty;
-      SwitchTurn();
+      if(m.GetType() == typeof(MoveMove))
+        pos[((MoveMove)m).initial] = Piece.Block;
 		}
 
     public static bool IsLegal(Move [] moves, Move m) {
@@ -115,7 +100,7 @@ namespace ConsoleApplication3 {
       if(mMoveCount < 4) {
         return pos.Select((x, i) => new { a = x == Piece.Empty, i })
           .Where(x => x.a)
-          .Select(x => new PlaceMove(x.i))
+          .Select(x => new Move(x.i))
           .ToArray();
       }
 			for(int i = 0;i < 49;i++) {
@@ -185,29 +170,34 @@ namespace ConsoleApplication3 {
 	class Program {
 		static void Main(string[] args) {
 			var b = new Board();
+      Move [] moves = null;
+      while(moves == null || !Board.IsEnd(moves)) {
+        moves = b.GetLegalMoves();
+        b.PrintBoard();
+        foreach(var m in moves) { Console.Write(m.PrintMove() + " "); }
+        Console.Write("\nEnter command: ");
+        var command = Console.ReadLine();
+        switch(command) {
+          case "quit": return;
+          case "undo": b.unMakeMove(); break;
+          default:
+            Move move = null;
+            if(command.Length == 2) {
+              move = new Move((command.ToCharArray()[0] - 'a')+(command.ToCharArray()[1] - '1')*7);
+            } else if (command.Length == 4) {
+              move = new MoveMove(
+                (command.ToCharArray()[0] - 'a')+(command.ToCharArray()[1] - '1')*7,
+                (command.ToCharArray()[2] - 'a')+(command.ToCharArray()[3] - '1')*7);
+            }
+            if(move == null || !Board.IsLegal(moves, move)) {
+              Console.WriteLine("Illegal move");
+              continue;
+            }
 
-			b.MakeMove(new PlaceMove(0));
-			b.MakeMove(new PlaceMove(3));
-			b.MakeMove(new PlaceMove(6));
-
-			b.MakeMove(new PlaceMove(21));
-			// b.MakeMove(new PlaceMove(24));
-			// b.MakeMove(new PlaceMove(27));
-
-			// b.MakeMove(new PlaceMove(42));
-			// b.MakeMove(new PlaceMove(45));
-			// b.MakeMove(new PlaceMove(48));
-
-			b.PrintBoard();
-
-      var moves = b.GetLegalMoves();
-
-      foreach(var m in moves) {
-        Console.Write(m.PrintMove());
-        Console.Write(" ");
+            b.MakeMove(move);
+            break;
+        }
       }
-
-			Console.Read();
 		}
 	}
 }
