@@ -22,17 +22,20 @@ namespace ConsoleApplication3 {
 		public int destination;
 
     public abstract string PrintMove();
+    public abstract bool Compare(Move m);
 	}
 
 	class PlaceMove : Move {
-		public Board.Piece piece;
-		public PlaceMove(Board.Piece p, int destination) {
+		public PlaceMove(int destination) {
 			this.destination = destination;
-			piece = p;
 		}
 
     public override string PrintMove() {
-      return $"{piece.PrintPiece()}: {(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+      return $"{(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+    }
+
+    public override bool Compare(Move m) {
+      return m.GetType() == typeof(PlaceMove) && this.destination == m.destination;
     }
 	}
 
@@ -46,6 +49,12 @@ namespace ConsoleApplication3 {
 
     public override string PrintMove() {
       return $"{(char)(initial%7+'A')}{(char)(initial/7+'1')}{(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+    }
+
+    public override bool Compare(Move m) {
+      return m.GetType() == typeof(MoveMove) &&
+        this.destination == ((MoveMove)m).destination && 
+        this.initial == ((MoveMove)m).initial;
     }
 	}
 
@@ -69,30 +78,49 @@ namespace ConsoleApplication3 {
 
 		public void MakeMove(PlaceMove m) {
 			mMoveCount++;
-			pos[m.destination] = m.piece;
+			pos[m.destination] = mTurn;
+      SwitchTurn();
 		}
 
 		public void MakeMove(MoveMove m) {
 			mMoveCount++;
 			pos[m.destination] = pos[m.initial];
 			pos[m.initial] = Piece.Block;
+      SwitchTurn();
 		}
 
 		public void unMakeMove(PlaceMove m) {
 			mMoveCount--;
 			pos[m.destination] = Piece.Empty;
+      SwitchTurn();
 		}
 
 		public void unMakeMove(MoveMove m) {
 			mMoveCount--;
 			pos[m.initial] = pos[m.destination];
 			pos[m.destination] = Piece.Empty;
+      SwitchTurn();
 		}
+
+    public static bool IsLegal(Move [] moves, Move m) {
+      return moves.Any(mv => m.Compare(mv));
+    }
+
+    public static bool IsEnd(Move [] moves) {
+      return !moves.Any();
+    }
 
 		public Move[] GetLegalMoves() {
 			var moves = new List<Move>();
+      if(mMoveCount < 4) {
+        return pos.Select((x, i) => new { a = x == Piece.Empty, i })
+          .Where(x => x.a)
+          .Select(x => new PlaceMove(x.i))
+          .ToArray();
+      }
 			for(int i = 0;i < 49;i++) {
-				while(pos[i] != mTurn) i++;
+				while(i < 49 && pos[i] != mTurn) i++;
+        if(i == 49) break;
 				int col = i % 7;
 				int row = i / 7;
 				int tmpCol, tmpRow;
@@ -158,17 +186,17 @@ namespace ConsoleApplication3 {
 		static void Main(string[] args) {
 			var b = new Board();
 
-			b.MakeMove(new PlaceMove(Board.Piece.White, 0));
-			b.MakeMove(new PlaceMove(Board.Piece.White, 3));
-			b.MakeMove(new PlaceMove(Board.Piece.White, 6));
+			b.MakeMove(new PlaceMove(0));
+			b.MakeMove(new PlaceMove(3));
+			b.MakeMove(new PlaceMove(6));
 
-			b.MakeMove(new PlaceMove(Board.Piece.White, 21));
-			b.MakeMove(new PlaceMove(Board.Piece.White, 24));
-			b.MakeMove(new PlaceMove(Board.Piece.White, 27));
+			b.MakeMove(new PlaceMove(21));
+			// b.MakeMove(new PlaceMove(24));
+			// b.MakeMove(new PlaceMove(27));
 
-			b.MakeMove(new PlaceMove(Board.Piece.White, 42));
-			b.MakeMove(new PlaceMove(Board.Piece.White, 45));
-			b.MakeMove(new PlaceMove(Board.Piece.White, 48));
+			// b.MakeMove(new PlaceMove(42));
+			// b.MakeMove(new PlaceMove(45));
+			// b.MakeMove(new PlaceMove(48));
 
 			b.PrintBoard();
 
