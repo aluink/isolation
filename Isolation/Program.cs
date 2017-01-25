@@ -18,8 +18,10 @@ namespace ConsoleApplication3 {
 		}
 	}
 
-	class Move {
+	abstract class Move {
 		public int destination;
+
+    public abstract string PrintMove();
 	}
 
 	class PlaceMove : Move {
@@ -28,6 +30,10 @@ namespace ConsoleApplication3 {
 			this.destination = destination;
 			piece = p;
 		}
+
+    public override string PrintMove() {
+      return $"{piece.PrintPiece()}: {(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+    }
 	}
 
 	class MoveMove : Move {
@@ -37,6 +43,10 @@ namespace ConsoleApplication3 {
 			this.destination = destination;
 			this.initial = initial;
 		}
+
+    public override string PrintMove() {
+      return $"{(char)(initial%7+'A')}{(char)(initial/7+'1')}{(char)(destination%7+'A')}{(char)(destination/7+'1')}";
+    }
 	}
 
 	class Board {
@@ -162,6 +172,12 @@ namespace ConsoleApplication3 {
 
 			b.PrintBoard();
 
+      var moves = b.GetLegalMoves();
+
+      foreach(var m in moves) {
+        Console.Write(m.PrintMove());
+        Console.Write(" ");
+      }
 
 			Console.Read();
 		}
